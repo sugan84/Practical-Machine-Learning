@@ -1,0 +1,124 @@
+---
+title: "Practical Machine Learning"
+author: "Sugandran Govindsamy"
+date: "10 March 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Practical Machine Learning Assignement
+
+## Synopsis
+
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Data References
+
+The training data for this project are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+The test data are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+# Downloading and Loading the data
+```{r echo = TRUE}
+setwd("C:/R Programming/Coursera/Practical Machine Learning/Project")
+
+trainUrl <-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+trainFile <- "./dataset/pml-training.csv"
+testFile  <- "./dataset/pml-testing.csv"
+
+# Creating a library for the downloaded data sets
+if (!file.exists("./dataset")) {
+  dir.create("./dataset")
+}
+if (!file.exists(trainFile)) {
+  download.file(trainUrl, destfile=trainFile)
+}
+if (!file.exists(testFile)) {
+  download.file(testUrl, destfile=testFile)
+}
+# read the data we working with
+train <- read.csv(trainFile)
+test <- read.csv(testFile)
+
+#dim(train)
+#dim(test)
+#str(train)
+#str(test)
+#summary(train)
+#summary(test)
+```
+# Clean the data sets
+
+```{r}
+# We see some NA and DIV/0 within the fields so we need to clean this up before we work forward
+
+train_clean <- read.csv(trainFile, na.strings = c("NA","#DIV/0!", ""))
+test_clean <- read.csv(testFile, na.strings = c("NA","#DIV/0!", ""))
+train_clean <- train_clean[,colSums(is.na(train_clean)) == 0]
+test_clean <- test_clean[,colSums(is.na(test_clean)) == 0]
+
+# We dont need user_name, raw_timestamp_part1, raw_timestamp_part2, cvtd_timestamp, new_window, num_window as it is not related to the calculation portion
+train_clean <- train_clean[,-c(1:7)]
+test_clean <- test_clean[,-c(1:7)]
+
+library(caret)
+library(rpart)
+library(randomForest)
+set.seed(666)
+```
+# Cross Validation and Data Modelling
+
+We need to create random split of the data into a training and test set
+
+```{r echo = TRUE}
+Partition_set <- createDataPartition(train_clean$classe, p = 0.70, list = FALSE)
+training_set <- train_clean[Partition_set, ]
+testing_set <- train_clean[-Partition_set, ]
+
+```
+
+## Build a Decision Tree
+```{r echo = TRUE}
+
+dt <- rpart(classe ~ ., data = training_set, method = "class")
+plot(dt)
+text(dt,pretty=0, cex =.9)
+
+pred_dt <- predict(dt, testing_set, type = "class")
+conf_dt <- confusionMatrix(pred_dt, testing_set$classe)
+```
+
+## Build a Random Forest
+```{r echo = TRUE}
+
+rf <- randomForest(classe ~., data = training_set, method = "class")
+varImpPlot(rf)
+pred_rf <- predict(rf, testing_set, type = "class")
+conf_rf <- confusionMatrix(pred_rf, testing_set$classe)
+```
+
+# Compare the models accuracy
+
+```{r echo = TRUE}
+comp <- data.frame(conf_dt$overall, conf_rf$overall)
+comp
+```
+
+Random Forests did a good job so we use that
+
+```{r echo = TRUE}
+prediction <- predict(rf, test_clean, type = "class")
+prediction
+```
+
+
+
+
+
